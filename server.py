@@ -6,50 +6,58 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # Allow frontend requests
 
-EMAIL_USER = os.getenv("EMAIL_USER")  # Your Gmail
-EMAIL_PASS = os.getenv("EMAIL_PASS")  # Your App Password
-
-@app.route("/", methods=["GET"])
+@app.route("/")
 def home():
-    return "Flask server is running!"
+    return "Flask Email API is running!"
 
 @app.route("/send-email", methods=["POST"])
 def send_email():
+    print(f"Request method: {request.method}")  # ✅ Log the request method
+    print(f"Request content type: {request.content_type}")  # ✅ Log the content type
+    print(f"Request data: {request.data}")  # ✅ Log the raw request data
+
+    data = request.get_json()  # Ensure JSON data is received
+    if not data:
+        return jsonify({"status": "error", "message": "Invalid JSON format"}), 400
+
+    name = data.get("name")
+    email = data.get("email")
+    message = data.get("message")
+
+    if not name or not email or not message:
+        return jsonify({"status": "error", "message": "All fields are required!"}), 400
+
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"status": "error", "message": "Invalid JSON data"}), 400
+        # Email Configuration
+        SMTP_SERVER = "smtp.gmail.com"
+        SMTP_PORT = 587
+        EMAIL_USER = os.getenv("EMAIL_USER")  # Use your Gmail
+        EMAIL_PASS = os.getenv("EMAIL_PASS")  # Use your App Password
 
-        name = data.get("name")
-        email = data.get("email")
-        message = data.get("message")
-
-        if not name or not email or not message:
-            return jsonify({"status": "error", "message": "All fields are required"}), 400
-
+        # Create email
         msg = MIMEMultipart()
         msg["From"] = EMAIL_USER
         msg["To"] = EMAIL_USER  # Send to yourself
-        msg["Subject"] = f"New Contact Form Message from {name}"
-
-        body = f"Name: {name}\nEmail: {email}\nMessage:\n{message}"
+        msg["Subject"] = f"New Contact Form Submission from {name}"
+        body = f"Name: {name}\nEmail: {email}\nMessage: {message}"
         msg.attach(MIMEText(body, "plain"))
 
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(EMAIL_USER, EMAIL_PASS)
-            server.sendmail(EMAIL_USER, EMAIL_USER, msg.as_string())
+        # Send Email
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASS)
+        server.sendmail(EMAIL_USER, EMAIL_USER, msg.as_string())
+        server.quit()
 
-        return jsonify({"status": "success", "message": "Email sent successfully!"})
-
+        return jsonify({"status": "success", "message": "Message sent successfully!"}), 200
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "Failed to send message", "error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)
-
+    app.run(debug=True)
