@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Send data to the Flask backend (Deployed on Render)
-        fetch("https://your-render-backend-url.com/send-email", {
+        fetch("https://profile-htxo.onrender.com", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name, email, message }),
