@@ -6,20 +6,25 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Allow frontend requests
+CORS(app)
 
-# Gmail credentials from environment variables
-EMAIL_USER = os.getenv("EMAIL_USER")  # Your Gmail (e.g., yourname@gmail.com)
-EMAIL_PASS = os.getenv("EMAIL_PASS")  # Your Gmail App Password
+EMAIL_USER = os.getenv("EMAIL_USER")  # Your Gmail
+EMAIL_PASS = os.getenv("EMAIL_PASS")  # Your App Password
+
+@app.route("/", methods=["GET"])
+def home():
+    return "Flask server is running!"
 
 @app.route("/send-email", methods=["POST"])
 def send_email():
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"status": "error", "message": "Invalid JSON data"}), 400
+
         name = data.get("name")
         email = data.get("email")
         message = data.get("message")
@@ -27,7 +32,6 @@ def send_email():
         if not name or not email or not message:
             return jsonify({"status": "error", "message": "All fields are required"}), 400
 
-        # Create email content
         msg = MIMEMultipart()
         msg["From"] = EMAIL_USER
         msg["To"] = EMAIL_USER  # Send to yourself
@@ -36,7 +40,6 @@ def send_email():
         body = f"Name: {name}\nEmail: {email}\nMessage:\n{message}"
         msg.attach(MIMEText(body, "plain"))
 
-        # Send the email using Gmail's SMTP server
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
             server.login(EMAIL_USER, EMAIL_PASS)
@@ -45,8 +48,8 @@ def send_email():
         return jsonify({"status": "success", "message": "Email sent successfully!"})
 
     except Exception as e:
-        print("Error:", e)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
+
